@@ -12,6 +12,7 @@ from scipy import sparse
 import scipy.optimize as optimize
 from scipy.ndimage import imread
 import scipy
+from pytictoc import TicToc
 
 # make an image become grey
 
@@ -111,11 +112,11 @@ sigma = 5
 #  read an image, the image must have both dimensions equal
 
 image = imread("batman_24.png")
-image = imread("batman_32.png")
-image = imread("batman_64.png")
-image = imread("batman_128.png")
-image = imread("batman_256.png")
-image = imread("slack_512.png")
+# image = imread("batman_32.png")
+# image = imread("batman_64.png")
+# image = imread("batman_128.png")
+# image = imread("batman_256.png")
+# image = imread("batman_512.png")
 
 image_grey = Turn_grey(image)
 
@@ -149,9 +150,17 @@ def f2(x, A = A, b = flatted_blurred_image ):
 # it uses broyden-fletcher-goldfarb-shanno's algorithm
 # check https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html
 
+#let's check how long this will take
+
+t1 = TicToc()
+
+t1.tic() #start
+
 optim_output_1 = optimize.minimize(f1, np.zeros(N**2), method='L-BFGS-B', jac=f2, options={'disp':True})
 
 final_image_BFGS = optim_output_1['x']
+
+t1.toc() #stop
 
 # here we do the least square problem. again with broyden-fletcher-goldfarb-shanno's algorithm
 # but now we analyze the smooth least square 
@@ -164,14 +173,20 @@ def f3(x, A = A, b = flatted_blurred_image, l = l):
 
 def f4(x, A = A, b = flatted_blurred_image, l = l):
     return 2*((A.T).dot(A.dot(x) - b) +l*((Dx(N).T).dot(Dx(N).dot(x)) + (Dy(N).T).dot(Dy(N).dot(x))))
-    
+
+t2 = TicToc()
+
+t2.tic() #start
+
 optim_output_2 = optimize.minimize(lambda x: f3(x),
                                  np.zeros(N**2),
                                  method='L-BFGS-B',
                                  jac=lambda x: f4(x),
                                  options={'disp':True}
 )
-                    
+
+t2.toc() #stop
+
 final_image_smooth_BFGS = optim_output_2['x']
 
 # showing all images
@@ -187,9 +202,13 @@ printImage(final_image_smooth_BFGS,N)
 # all our results until now are based on python's scipy library
 # now we will show our implementation to find the best non_blurred_image
 
-want_to_see_QR = False
+want_to_see_QR = True
 
 if want_to_see_QR:
+
+    t3 = TicToc()
+
+    t3.tic()
 
     A_ = scipy.sparse.vstack((A, l*Dx(N), l*Dy(N))).todense()
 
@@ -203,13 +222,7 @@ if want_to_see_QR:
 
     R1 = R[0:n,0:n] 
 
-    print(Q1)
-
     b = flatted_blurred_image
-
-    print(b)
-
-    print(image)
 
     aux = np.dot((Q1.T),b)
 
@@ -217,6 +230,6 @@ if want_to_see_QR:
 
     x_ = x_.T
 
-    print(x_)
+    t3.toc()
 
     printImage(x_,N)
